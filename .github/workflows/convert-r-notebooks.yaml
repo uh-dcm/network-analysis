@@ -1,0 +1,113 @@
+name: Convert R Notebooks to Rmarkdown
+
+on:
+  push:
+    paths:
+      - 'css04-networks-code/**.ipynb'
+      - '.github/workflows/convert-r-notebooks.yml'
+
+jobs:
+  convert-r-notebooks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jupytext
+      
+      - name: Find and convert R notebooks
+        id: convert
+        run: |
+          # Find all R notebooks and convert them
+          python3 << 'EOF'
+          import json
+          import subprocess
+          from pathlib import Path
+          
+          converted_files = []
+          notebook_dir = Path('css04-networks-code')
+          
+          for notebook_path in notebook_dir.glob('*.ipynb'):
+              try:
+                  with open(notebook_path, 'r', encoding='utf-8') as f:
+                      notebook = json.load(f)
+                  
+                  # Check if this is an R notebook
+                  kernel_lang = notebook.get('metadata', {}).get('kernelspec', {}).get('language', '').lower()
+                  kernel_name = notebook.get('metadata', {}).get('kernelspec', {}).get('name', '').lower()
+                  
+                  is_r = kernel_lang == 'r' or 'ir' in kernel_name or kernel_name == 'r'
+                  
+                  if is_r:
+                      # Convert to Rmarkdown
+                      rmd_path = notebook_path.with_suffix('.Rmd')
+                      print(f"Converting {notebook_path.name} to {rmd_path.name}...")
+                      
+                      result = subprocess.run(
+                          ['jupytext', '--to', 'rmarkdown', str(notebook_path)],
+                          capture_output=True,
+                          text=True
+                      )
+                      
+                      if result.returncode == 0:
+                          converted_files.append(str(rmd_path))
+                          print(f"✓ Successfully converted {notebook_path.name}")
+                      else:
+                          print(f"✗ Error converting {notebook_path.name}: {result.stderr}")
+              except Exception as e:
+                  print(f"Error processing {notebook_path.name}: {e}")
+          
+          # Output list of converted files
+          output_file = Path('/tmp/converted_files.txt')
+          if converted_files:
+              print(f"\nConverted {len(converted_files)} file(s):")
+              for f in converted_files:
+                  print(f"  - {f}")
+              # Set output for next step
+              with open(output_file, 'w') as f:
+                  f.write('\n'.join(converted_files))
+          else:
+              print("\nNo R notebooks found to convert.")
+              # Create empty file
+              output_file.touch()
+          EOF
+      
+      - name: Check for changes
+        id: changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if [ -s /tmp/converted_files.txt ]; then
+            # Add all .Rmd files that were converted
+            git add css04-networks-code/*.Rmd
+            # Check if there are any staged changes
+            if ! git diff --staged --quiet; then
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+              echo "Files to commit:"
+              git diff --staged --name-only
+            else
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+              echo "No changes to commit (files already up to date)"
+            fi
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No R notebooks found to convert"
+          fi
+      
+      - name: Commit and push Rmarkdown files
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git commit -m "Auto-generate Rmarkdown files from R notebooks [skip ci]"
+          git push
