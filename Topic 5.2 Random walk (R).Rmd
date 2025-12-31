@@ -1,0 +1,63 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.18.1
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+```{r}
+library(igraph)
+
+data <- read.csv('data/org_x_collaboration.csv', header = F )
+matrix <- as.matrix( data )
+
+g <- graph_from_adjacency_matrix( matrix, 'directed' )
+
+## add metadata
+V(g)$gender <- as.factor( sample(0:1, length( V(g) ), replace = TRUE ) )
+V(g)$age <- sample(18:63, length( V(g) ), replace = TRUE )
+V(g)$education <- as.factor( sample(1:9, length( V(g) ), replace = TRUE ) )
+```
+
+```{r}
+same = 0
+different = 0
+
+for( i in 0:100 ) {
+    
+    walk <- random_walk(g, start = 2, steps = 5)
+    final_node <- tail( walk, n = 1 ) ## get the last element
+    
+    
+    start_gender <- V(g)$gender[2]
+    end_gender <- V(g)[ V(g) == tail( walk, n = 1 ) ]$gender
+    
+    if( start_gender == end_gender ) {
+        same <- same + 1
+    } else {
+        different <- different + 1
+    }
+    
+}
+
+print( same )
+print( different )
+```
+
+## Tasks
+
+* increase the number of random walks from 100 to 1000 (why would you do this?)
+* instead of always starting from node 2, start from a random node in the network
+* try different step lenghts, does it make a difference?
+* test if there is *any* different genders in the path, not only the final node
+
+```{r}
+
+```
