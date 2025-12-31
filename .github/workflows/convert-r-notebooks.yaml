@@ -90,7 +90,7 @@ jobs:
           
           if [ -s /tmp/converted_files.txt ]; then
             # Add all .Rmd files that were converted
-            git add css04-networks-code/*.Rmd
+            git add *.Rmd
             # Check if there are any staged changes
             if ! git diff --staged --quiet; then
               echo "has_changes=true" >> $GITHUB_OUTPUT
