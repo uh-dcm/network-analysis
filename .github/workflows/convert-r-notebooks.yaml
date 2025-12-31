@@ -3,8 +3,8 @@ name: Convert R Notebooks to Rmarkdown
 on:
   push:
     paths:
-      - 'css04-networks-code/**.ipynb'
-      - '.github/workflows/convert-r-notebooks.yml'
+      - '**.ipynb'
+    workflow_dispatch:  # Allow manual triggering
 
 jobs:
   convert-r-notebooks:
