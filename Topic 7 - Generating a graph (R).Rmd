@@ -1,0 +1,88 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.18.1
+  kernelspec:
+    display_name: R
+    language: R
+    name: ir
+---
+
+```{r}
+library(jsonlite)
+```
+
+# Loading a Slack conversation
+
+* This is a fake file similar to what one might get from Slack
+* The file is normal JSON file and each has messages
+* Each message has user, text, reactions etc.
+
+```{r}
+data <- fromJSON("data/fake-slack.json")
+messages <- data$messages
+```
+
+```{r}
+messages[1,]
+```
+
+# Generate a mention network
+
+We check who mentions whom from the dataset
+
+1. Initialise an empty graph
+1. Go through all messages and identify who is mentioned
+1. Add edges if they have been mentioned
+
+```{r}
+library(igraph)
+
+G <- make_empty_graph(directed = TRUE)
+```
+
+```{r}
+for (i in seq_len(nrow(messages))) {
+  user <- messages$user[i]
+  mentions <- messages$mentions[[i]]
+
+  # Ensure user exists
+  if (!(user %in% V(G)$name)) {
+    G <- add_vertices(G, 1, name = user)
+  }
+
+  # For each mention, ensure vertex exists and add/increment edge
+  for (mention in mentions) {
+    if (!(mention %in% V(G)$name)) {
+      G <- add_vertices(G, 1, name = mention)
+    }
+    ## check if user -> mention edge exists
+    eid <- get_edge_ids(G, c(user, mention), directed = TRUE)
+    if (eid == 0) { ## it does not, add edge with initial weight 1
+        G <- add_edges(G, c(user, mention))
+        E(G)[user %->% mention]$weight <- 1
+    } else {
+        # Increment existing weight
+        E(G)[eid]$weight <- ifelse(is.na(E(G)[eid]$weight), 1, E(G)[eid]$weight + 1)
+    }
+  }
+}
+```
+
+```{r}
+V(G)
+```
+
+```{r}
+E(G)
+```
+
+## Tasks
+
+* Plot the above graph
+* Instead of mentions, analyse reactions
+* Analyse both mentions and reactions
