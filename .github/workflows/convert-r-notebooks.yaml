@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '**.ipynb'
+      - '*.ipynb'
 jobs:
   convert-r-notebooks:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           from pathlib import Path
           
           converted_files = []
-          notebook_dir = Path('css04-networks-code')
+          notebook_dir = Path('.')
           
           for notebook_path in notebook_dir.glob('*.ipynb'):
               try:
